@@ -1,59 +1,26 @@
-##############################################################################
-#
-# FILE
-#   plot3.R
-#
-# OVERVIEW
-#
-#   Using data collected from the UC Irvine Machine Learning Repository,  
-#   to generate a plot of different submetering vs time
-#
-#   See README.md for details.
-#
-#
-##############################################################################
+library("data.table")
+library("ggplot2")
 
+setwd("~/Desktop/datasciencecoursera/4_Exploratory_Data_Analysis/project2")
+path <- getwd()
+download.file(url = "https://d396qusza40orc.cloudfront.net/exdata%2Fdata%2FNEI_data.zip"
+              , destfile = paste(path, "dataFiles.zip", sep = "/"))
+unzip(zipfile = "dataFiles.zip")
 
-##############################################################################
-# STEP 1 - Get data
-##############################################################################
+# Load the NEI & SCC data frames.
+NEI <- data.table::as.data.table(x = readRDS("summarySCC_PM25.rds"))
+SCC <- data.table::as.data.table(x = readRDS("Source_Classification_Code.rds"))
 
-data_full <- read.csv("./Data/household_power_consumption.txt", header=T, sep=';', na.strings="?", 
-                      nrows=2075259, check.names=F, stringsAsFactors=F, comment.char="", quote='\"')
-data_full$Date <- as.Date(data_full$Date, format="%d/%m/%Y")
+# Subset NEI data by Baltimore
+baltimoreNEI <- NEI[fips=="24510",]
 
+png("plot3.png")
 
-##############################################################################
-# STEP 2 - Subsetting the data
-##############################################################################
+ggplot(baltimoreNEI,aes(factor(year),Emissions,fill=type)) +
+  geom_bar(stat="identity") +
+  theme_bw() + guides(fill=FALSE)+
+  facet_grid(.~type,scales = "free",space="free") + 
+  labs(x="year", y=expression("Total PM"[2.5]*" Emission (Tons)")) + 
+  labs(title=expression("PM"[2.5]*" Emissions, Baltimore City 1999-2008 by Source Type"))
 
-data <- subset(data_full, subset=(Date >= "2007-02-01" & Date <= "2007-02-02"))
-rm(data_full)
-
-##############################################################################
-# STEP 3 - Converting dates
-##############################################################################
- 
-datetime <- paste(as.Date(data$Date), data$Time)
-data$Datetime <- as.POSIXct(datetime)
-
-##############################################################################
-# STEP 4 - Generate the plot
-##############################################################################
-
-with(data, {
-    plot(Sub_metering_1~Datetime, type="l",
-         ylab="Global Active Power (kilowatts)", xlab="")
-    lines(Sub_metering_2~Datetime,col='Red')
-    lines(Sub_metering_3~Datetime,col='Blue')
-})
-legend("topright", col=c("black", "red", "blue"), lty=1, lwd=2, 
-       legend=c("Sub_metering_1", "Sub_metering_2", "Sub_metering_3"))
-
-	 
-##############################################################################
-# STEP 5 - Saving to file
-##############################################################################	 
-
-dev.copy(png, file="plot3.png", height=480, width=480)
 dev.off()

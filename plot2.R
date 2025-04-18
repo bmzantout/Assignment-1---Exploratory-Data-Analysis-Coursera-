@@ -1,53 +1,22 @@
-##############################################################################
-#
-# FILE
-#   plot2.R
-#
-# OVERVIEW
-#
-#   Using data collected from the UC Irvine Machine Learning Repository,  
-#   to generate a plot of global active power vs. time
-#
-#   See README.md for details.
-#
-#
-##############################################################################
+library("data.table")
+path <- getwd()
+download.file(url = "https://d396qusza40orc.cloudfront.net/exdata%2Fdata%2FNEI_data.zip"
+              , destfile = paste(path, "dataFiles.zip", sep = "/"))
+unzip(zipfile = "dataFiles.zip")
 
+SCC <- data.table::as.data.table(x = readRDS(file = "Source_Classification_Code.rds"))
+NEI <- data.table::as.data.table(x = readRDS(file = "summarySCC_PM25.rds"))
 
-##############################################################################
-# STEP 1 - Get data
-##############################################################################
+NEI[, Emissions := lapply(.SD, as.numeric), .SDcols = c("Emissions")]
+totalNEI <- NEI[fips=='24510', lapply(.SD, sum, na.rm = TRUE)
+                , .SDcols = c("Emissions")
+                , by = year]
 
-data_full <- read.csv("./Data/household_power_consumption.txt", header=T, sep=';', na.strings="?", 
-            nrows=2075259, check.names=F, stringsAsFactors=F, comment.char="", quote='\"')
-data_full$Date <- as.Date(data_full$Date, format="%d/%m/%Y")
+png(filename='plot2.png')
 
+barplot(totalNEI[, Emissions]
+        , names = totalNEI[, year]
+        , xlab = "Years", ylab = "Emissions"
+        , main = "Emissions over the Years")
 
-##############################################################################
-# STEP 2 - Subsetting the data
-##############################################################################
-
-data <- subset(data_full, subset=(Date >= "2007-02-01" & Date <= "2007-02-02"))
-rm(data_full)
-
-##############################################################################
-# STEP 3 - Converting dates
-##############################################################################
- 
-datetime <- paste(as.Date(data$Date), data$Time)
-data$Datetime <- as.POSIXct(datetime)
-
-##############################################################################
-# STEP 4 - Generate the plot
-##############################################################################
-
-plot(data$Global_active_power~data$Datetime, type="l",
-    ylab="Global Active Power (kilowatts)", xlab="")
-
-	 
-##############################################################################
-# STEP 5 - Saving to file
-##############################################################################	 
-
-dev.copy(png, file="plot2.png", height=480, width=480)
 dev.off()
